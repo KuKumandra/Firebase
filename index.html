@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мой облачный проект</title>
+    <style>
+    body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background-color: #f4f4f4; }
+    .form-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; }
+    input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+    button { width: 100%; padding: 10px; background: #ffa400; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h3>Отправить заявку</h3>
+    <form id="feedback-form">
+        <input type="text" id="userName" placeholder="Ваше имя" required>
+        <input type="email" id="userEmail" placeholder="Ваш email" required>
+        <button type="submit">Отправить</button>
+    </form>
+</div>
+
+<script type="module">
+// Импорт модулей Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+// ⚠️ ВАЖНО: Замените эти ключи на свои из консоли Firebase!
+const firebaseConfig = {
+  apiKey: "AIzaSyAMMgGxN27p0FYmp-LVMmKw5KJbvFM-KhQ",
+  authDomain: "project1-c17c1.firebaseapp.com",
+  projectId: "project1-c17c1",
+  storageBucket: "project1-c17c1.firebasestorage.app",
+  messagingSenderId: "774031073336",
+  appId: "1:774031073336:web:4ecdc3ad60a52f076786cd",
+  measurementId: "G-GKXVQK98QR"
+};
+
+// Инициализация Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Обработчик отправки формы
+document.getElementById("feedback-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const nameInput = document.getElementById("userName").value;
+    const emailInput = document.getElementById("userEmail").value;
+
+    try {
+        // Запись в коллекцию "requests"
+        await addDoc(collection(db, "requests"), {
+            name: nameInput,
+            email: emailInput,
+            timestamp: new Date() // Добавляем дату и время отправки
+        });
+        
+        alert("Готово! Данные сохранены в Firebase.");
+        document.getElementById("feedback-form").reset();
+    } catch (error) {
+        console.error("Ошибка:", error);
+        alert("Ошибка при отправке. Проверьте консоль.");
+    }
+});
+</script>
+
+</body>
+</html>

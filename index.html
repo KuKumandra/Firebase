@@ -1,32 +1,135 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Мой облачный проект</title>
-    <style>
-    body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background-color: #f4f4f4; }
-    .form-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; }
-    input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-    button { width: 100%; padding: 10px; background: #ffa400; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
-    </style>
-</head>
-<body>
+Вот 2 дополнительные функции для вашего Firebase проекта:
 
-<div class="form-container">
-    <h3>Отправить заявку</h3>
-    <form id="feedback-form">
-        <input type="text" id="userName" placeholder="Ваше имя" required>
-        <input type="email" id="userEmail" placeholder="Ваш email" required>
-        <button type="submit">Отправить</button>
-    </form>
+## 1. **Просмотр всех заявок (админ-панель)**
+## 2. **Удаление заявок по одному клику**
+
+Добавьте этот код после вашего существующего скрипта:
+
+```html
+<!-- Добавьте эти стили в ваш <style> блок -->
+<style>
+    /* Дополнительные стили для новых функций */
+    .admin-panel {
+        margin-top: 30px;
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 800px;
+    }
+    
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .view-requests-btn {
+        background: #4CAF50;
+        padding: 8px 16px;
+        width: auto;
+    }
+    
+    .requests-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .request-item {
+        background: #f9f9f9;
+        border-left: 4px solid #ffa400;
+        padding: 12px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .request-info {
+        flex: 1;
+    }
+    
+    .request-name {
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .request-email {
+        color: #666;
+        font-size: 14px;
+        margin-top: 4px;
+    }
+    
+    .request-time {
+        color: #999;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+    
+    .delete-btn {
+        background: #f44336;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        width: auto;
+        font-size: 12px;
+    }
+    
+    .delete-btn:hover {
+        background: #d32f2f;
+    }
+    
+    .close-panel-btn {
+        background: #666;
+        width: auto;
+        padding: 8px 16px;
+    }
+    
+    .stats {
+        background: #e3f2fd;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        font-size: 14px;
+    }
+    
+    .hidden {
+        display: none;
+    }
+</style>
+
+<!-- Добавьте HTML-код для админ-панели -->
+<div class="admin-panel">
+    <div class="admin-header">
+        <h3>📊 Админ-панель</h3>
+        <button id="toggleRequestsBtn" class="view-requests-btn">📋 Показать заявки</button>
+    </div>
+    
+    <div id="requestsContainer" class="hidden">
+        <div class="stats" id="statsInfo">
+            Загрузка...
+        </div>
+        <div id="requestsList" class="requests-list">
+            <!-- Здесь будут отображаться заявки -->
+        </div>
+        <button id="closePanelBtn" class="close-panel-btn">Закрыть</button>
+    </div>
 </div>
 
 <script type="module">
-// Импорт модулей Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+// Добавьте эти импорты в существующий import блок
+// import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, orderBy, query } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// ⚠️ ВАЖНО: Замените эти ключи на свои из консоли Firebase!
+// Обновите импорт в вашем коде (замените существующий import на этот):
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+// Ваш существующий код инициализации Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAMMgGxN27p0FYmp-LVMmKw5KJbvFM-KhQ",
   authDomain: "project1-c17c1.firebaseapp.com",
@@ -37,11 +140,126 @@ const firebaseConfig = {
   measurementId: "G-GKXVQK98QR"
 };
 
-// Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Обработчик отправки формы
+// ========== ФУНКЦИЯ 1: ПРОСМОТР ЗАЯВОК ==========
+async function loadRequests() {
+    const requestsListDiv = document.getElementById('requestsList');
+    const statsInfo = document.getElementById('statsInfo');
+    
+    try {
+        // Создаем запрос с сортировкой по времени (новые сверху)
+        const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+        const querySnapshot = await getDocs(q);
+        
+        const requests = [];
+        querySnapshot.forEach((doc) => {
+            requests.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        // Показываем статистику
+        statsInfo.innerHTML = `📈 Всего заявок: ${requests.length}`;
+        
+        if (requests.length === 0) {
+            requestsListDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">Нет заявок</div>';
+            return;
+        }
+        
+        // Отображаем каждую заявку
+        requestsListDiv.innerHTML = requests.map(req => `
+            <div class="request-item" data-id="${req.id}">
+                <div class="request-info">
+                    <div class="request-name">👤 ${escapeHtml(req.name)}</div>
+                    <div class="request-email">📧 ${escapeHtml(req.email)}</div>
+                    <div class="request-time">🕒 ${formatDate(req.timestamp)}</div>
+                </div>
+                <button class="delete-btn" onclick="window.deleteRequest('${req.id}')">🗑 Удалить</button>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error("Ошибка загрузки:", error);
+        statsInfo.innerHTML = "❌ Ошибка загрузки данных";
+        requestsListDiv.innerHTML = '<div style="color: red;">Ошибка при загрузке заявок</div>';
+    }
+}
+
+// ========== ФУНКЦИЯ 2: УДАЛЕНИЕ ЗАЯВКИ ==========
+async function deleteRequest(requestId) {
+    if (confirm('Вы уверены, что хотите удалить эту заявку?')) {
+        try {
+            await deleteDoc(doc(db, "requests", requestId));
+            alert('✅ Заявка успешно удалена!');
+            // Обновляем список
+            await loadRequests();
+        } catch (error) {
+            console.error("Ошибка удаления:", error);
+            alert('❌ Ошибка при удалении заявки');
+        }
+    }
+}
+
+// Вспомогательные функции
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+function formatDate(timestamp) {
+    if (!timestamp) return 'Дата не указана';
+    
+    let date;
+    if (timestamp.toDate) {
+        // Firestore Timestamp
+        date = timestamp.toDate();
+    } else if (timestamp.seconds) {
+        // Firestore Timestamp другой формат
+        date = new Date(timestamp.seconds * 1000);
+    } else {
+        date = new Date(timestamp);
+    }
+    
+    return date.toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Делаем функцию deleteRequest глобальной для использования в onclick
+window.deleteRequest = deleteRequest;
+
+// Обработчики для админ-панели
+document.getElementById('toggleRequestsBtn').addEventListener('click', async () => {
+    const container = document.getElementById('requestsContainer');
+    
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        await loadRequests();
+        document.getElementById('toggleRequestsBtn').textContent = '🙈 Скрыть заявки';
+    } else {
+        container.classList.add('hidden');
+        document.getElementById('toggleRequestsBtn').textContent = '📋 Показать заявки';
+    }
+});
+
+document.getElementById('closePanelBtn').addEventListener('click', () => {
+    document.getElementById('requestsContainer').classList.add('hidden');
+    document.getElementById('toggleRequestsBtn').textContent = '📋 Показать заявки';
+});
+
+// Ваш существующий код отправки формы (оставьте как есть)
 document.getElementById("feedback-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     
@@ -49,21 +267,40 @@ document.getElementById("feedback-form").addEventListener("submit", async (e) =>
     const emailInput = document.getElementById("userEmail").value;
 
     try {
-        // Запись в коллекцию "requests"
         await addDoc(collection(db, "requests"), {
             name: nameInput,
             email: emailInput,
-            timestamp: new Date() // Добавляем дату и время отправки
+            timestamp: new Date()
         });
         
-        alert("Готово! Данные сохранены в Firebase.");
+        alert("✅ Готово! Данные сохранены в Firebase.");
         document.getElementById("feedback-form").reset();
     } catch (error) {
         console.error("Ошибка:", error);
-        alert("Ошибка при отправке. Проверьте консоль.");
+        alert("❌ Ошибка при отправке. Проверьте консоль.");
     }
 });
 </script>
+```
 
-</body>
-</html>
+## Что добавилось:
+
+### 📋 **Функция 1: Просмотр всех заявок**
+- Кнопка "Показать заявки" открывает админ-панель
+- Отображает все отправленные заявки с сортировкой по дате (новые сверху)
+- Показывает статистику (общее количество заявок)
+- Информация о каждой заявке: имя, email, время отправки
+
+### 🗑 **Функция 2: Удаление заявок**
+- У каждой заявки есть кнопка "Удалить"
+- Подтверждение действия перед удалением
+- После удаления список автоматически обновляется
+
+## Особенности:
+- ✅ Безопасное отображение HTML (защита от XSS)
+- ✅ Красивое форматирование дат
+- ✅ Адаптивный дизайн
+- ✅ Подтверждение перед удалением
+- ✅ Автообновление списка после операций
+
+Просто скопируйте весь код в ваш HTML-файл, и новые функции заработают!
